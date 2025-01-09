@@ -20,15 +20,15 @@ See network as a directed graph, where people and their preferences are nodes an
 
 Initial Network:
 
-![](/fig/graph_before_girvan_newman.png)
+![](/fig/example_graph_before_girvan_newman.png)
 
 Step 1: Community Identification (14 found)
 
-![](/fig/graph_with_15_communities.png)
+![](/fig/example_graph_with_15_communities.png)
 
 Step 2: Merge Small Community (7 communities after merging)
 
-![](/fig/graph_with_merged_communities.png)
+![](/fig/example_graph_with_merged_communities.png)
 
 Result:
 ```
