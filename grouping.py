@@ -1,8 +1,10 @@
-import csv
 import networkx as nx
 import matplotlib.pyplot as plt
 import random
 import itertools
+import gspread
+import pandas as pd
+from oauth2client.service_account import ServiceAccountCredentials
 
 LAYOUT_SEED = 42
 COLORS = [
@@ -12,18 +14,52 @@ COLORS = [
     '#D1FFD1', '#D1DCFF', '#FFDCB1', '#B1FFDC', '#FFB3FF'
 ]
 
-def generate_graph_from_csv(file_path):
+id_to_name = dict()
+
+def read_from_google_sheet(sheet_id, path_to_credentials) -> pd.DataFrame:
+    # Define the scope
+    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+
+    # Add credentials to the account
+    creds = ServiceAccountCredentials.from_json_keyfile_name(path_to_credentials, scope)
+
+    # Authorize the clientsheet 
+    client = gspread.authorize(creds)
+
+    # Get the instance of the Spreadsheet
+    sheet = client.open_by_key(sheet_id)
+
+    # Get the first sheet of the Spreadsheet
+    worksheet = sheet.get_worksheet(0)
+
+    # Get all the records of the data
+    records = worksheet.get_all_values()
+    records_df = pd.DataFrame(records[1:], columns=records[0])
+
+    return records_df
+
+def generate_graph_google_sheet(sheet_id='1G8NxYP1G7baxZgSzkzGpJM8nnPNjSo7xunocJhRNJqs',
+                                path_to_credentials='api-keys/ioscamp-grouping-df344bc23626.json') -> nx.DiGraph:
+    records_df = read_from_google_sheet(sheet_id, path_to_credentials)
+    print(f'{records_df.shape[0]} reponses in total')
+    print(records_df)
+    
+    def parse_id(id_and_name):
+        id = id_and_name.split('. ')[0]
+        name = id_and_name.split('. ')[1]
+        id_to_name[id] = name
+        return id
+    
     graph = nx.DiGraph()
-    with open(file_path, 'r') as file:
-        reader = csv.reader(file)
-        for row in reader:
-            person = int(row[0])
-            preferences = list(map(int, row[1:]))
-            for preference in preferences:
-                graph.add_edge(person, preference)
+    for index, row in records_df.iterrows():
+        # Access values by column name
+        person_id = parse_id(row['請選擇您的名字與學員編號'])
+        for perference_id in [parse_id(id_and_name) for id_and_name in row['請勾選您希望能其同組的隊員'].split(', ')]:
+            if person_id != perference_id:
+                graph.add_edge(person_id, perference_id)
     return graph
 
-def generate_graph_random(num_people=40, num_preferences=4):
+def generate_graph_random(num_people=40, num_preferences=4) -> nx.DiGraph:
     graph = nx.DiGraph()
     for person in range(1, num_people + 1):
         preferences = random.sample(range(1, num_people + 1), num_preferences)
@@ -98,14 +134,22 @@ def calculate_happiness(graph, communities):
             happiness.append(sum(1 for neighbor in graph.neighbors(node) if neighbor in community))
     return happiness
 
+def replace_id_with_name(communities) -> tuple:
+    if id_to_name:
+        return tuple([{f'{id}. {id_to_name[id]}' for id in community} for community in communities])
+    else:
+        return communities
+
 if __name__ == "__main__":
     N = 40
+    DATA_SOURCE = 'google_sheet'
 
-    # Read or generate a graph
-    # file_path = '/path/to/your/csvfile.csv'
-    # graph = read_csv(file_path)
-    graph = generate_graph_random()
-    draw_graph(graph, 'Graph Before Girvan-Newman Algorithm', 'graph_before_girvan_newman.png')
+    if DATA_SOURCE == 'google_sheet':
+        graph = generate_graph_google_sheet()
+        draw_graph(graph, 'Graph Before Girvan-Newman Algorithm', 'graph_before_girvan_newman.png')
+    elif DATA_SOURCE == 'random':
+        graph = generate_graph_random()
+        draw_graph(graph, 'Graph Before Girvan-Newman Algorithm', 'graph_before_girvan_newman.png')
     
     # Apply Girvan-Newman algorithm
     comp = girvan_newman_algorithm(graph)
@@ -114,14 +158,14 @@ if __name__ == "__main__":
         draw_communities_on_graph(graph, communities, n_communities, f'graph_with_{n_communities}_communities.png')
         if (len(max(communities, key=len)) <= 6):
             break
-    print(f'{n_communities} communities found:\n{communities}')
+    print(f'{n_communities} communities found:\n{replace_id_with_name(communities)}')
 
     # Merge small communities
     communities = list(communities)
     merged_communities = merge_small_communities(graph, communities)
     merged_communities = tuple(merged_communities)
     draw_communities_on_graph(graph, merged_communities, len(merged_communities), 'graph_with_merged_communities.png')
-    print(f'Merged into {len(merged_communities)} communities:\n{merged_communities}')
+    print(f'Merged into {len(merged_communities)} communities:\n{replace_id_with_name(merged_communities)}')
 
     # Calcuate happiness
     happiness_list = calculate_happiness(graph, merged_communities)
