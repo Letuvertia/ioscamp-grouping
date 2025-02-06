@@ -1,4 +1,5 @@
 import networkx as nx
+import matplotlib
 import matplotlib.pyplot as plt
 import random
 import itertools
@@ -6,6 +7,7 @@ import gspread
 import pandas as pd
 from oauth2client.service_account import ServiceAccountCredentials
 
+matplotlib.rcParams['font.sans-serif'] = ['Noto Sans TC'] # set traditional Chinese font
 LAYOUT_SEED = 42
 COLORS = [
     '#FFB3BA', '#FFDFBA', '#FFFFBA', '#BAFFC9', '#BAE1FF',
@@ -69,10 +71,11 @@ def generate_graph_random(num_people=40, num_preferences=4) -> nx.DiGraph:
     return graph
 
 def draw_graph(graph, title, filename):
-    pos = nx.spring_layout(graph, seed=LAYOUT_SEED)
+    pos = nx.spring_layout(graph, seed=LAYOUT_SEED, k=0.3, iterations=30)
     plt.figure()
-    nx.draw(graph, pos, with_labels=True, node_color='lightblue', edge_color='gray', node_size=500, font_size=10)
-    plt.savefig(filename)
+    labels = {node: id_to_name[node] for node in graph.nodes()}
+    nx.draw(graph, pos, with_labels=True, labels=labels, node_color='lightblue', edge_color='gray', node_size=600, font_size=8)
+    plt.savefig(filename, dpi=600)
     plt.close()
 
 def girvan_newman_algorithm(graph):
@@ -80,14 +83,13 @@ def girvan_newman_algorithm(graph):
     return comp 
 
 def draw_communities_on_graph(graph, communities, n_communities, filename):
-    pos = nx.spring_layout(graph, seed=LAYOUT_SEED)
+    pos = nx.spring_layout(graph, seed=LAYOUT_SEED, k=0.3, iterations=30)
     plt.figure()
-    nx.draw(graph, pos, with_labels=True, node_color='lightblue', edge_color='gray', node_size=500, font_size=10)
-    
+    labels = {node: id_to_name[node] for node in graph.nodes()}
+    nx.draw(graph, pos, with_labels=True, labels=labels, node_color='lightblue', edge_color='gray', node_size=600, font_size=8)
     for community, color in zip(communities, COLORS):
         nx.draw_networkx_nodes(graph, pos, nodelist=list(community), node_color=color)
-    
-    plt.savefig(filename)
+    plt.savefig(filename, dpi=600)
     plt.close()
 
 def merge_small_communities(graph, communities_original):
