@@ -40,7 +40,7 @@ def read_from_google_sheet(sheet_id, path_to_credentials) -> pd.DataFrame:
 
     return records_df
 
-def generate_graph_google_sheet(sheet_id='1G8NxYP1G7baxZgSzkzGpJM8nnPNjSo7xunocJhRNJqs',
+def generate_graph_google_sheet(sheet_id='1HC7UZAEg7BJ9sD29Ufvdzpa3FCp3Bw72ZMzI5C126XA',
                                 path_to_credentials='api-keys/ioscamp-grouping-df344bc23626.json') -> nx.DiGraph:
     records_df = read_from_google_sheet(sheet_id, path_to_credentials)
     print(f'{records_df.shape[0]} reponses in total')
@@ -56,7 +56,7 @@ def generate_graph_google_sheet(sheet_id='1G8NxYP1G7baxZgSzkzGpJM8nnPNjSo7xunocJ
     for index, row in records_df.iterrows():
         # Access values by column name
         person_id = parse_id(row['請選擇您的名字與學員編號'])
-        for perference_id in [parse_id(id_and_name) for id_and_name in row['請勾選您希望能其同組的隊員'].split(', ')]:
+        for perference_id in [parse_id(id_and_name) for id_and_name in row['請勾選您希望與其同組的學員'].split(', ')]:
             if person_id != perference_id:
                 graph.add_edge(person_id, perference_id)
     return graph
@@ -158,7 +158,7 @@ if __name__ == "__main__":
     for n_communities, communities in enumerate(itertools.islice(comp, N), start=2):
         sorted(communities, key=len, reverse=True)
         draw_communities_on_graph(graph, communities, n_communities, f'graph_with_{n_communities}_communities.png')
-        if (len(max(communities, key=len)) <= 6):
+        if (len(max(communities, key=len)) <= 7):
             break
     print(f'{n_communities} communities found:\n{replace_id_with_name(communities)}')
 
@@ -168,6 +168,11 @@ if __name__ == "__main__":
     merged_communities = tuple(merged_communities)
     draw_communities_on_graph(graph, merged_communities, len(merged_communities), 'graph_with_merged_communities.png')
     print(f'Merged into {len(merged_communities)} communities:\n{replace_id_with_name(merged_communities)}')
+    for i, community in enumerate(merged_communities):
+        print(f'第{i + 1}組：')
+        for person in community:
+            print(f'{person}. {id_to_name[person]}')
+        print()
 
     # Calcuate happiness
     happiness_list = calculate_happiness(graph, merged_communities)
