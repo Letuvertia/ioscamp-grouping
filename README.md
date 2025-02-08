@@ -1,10 +1,8 @@
 # Preference-Based Grouping
 Group *N* people into teams of 5~7 based on their (unordered) preferences for teammates.
 
-## Quick usage
-```bash
-python3 grouping.py
-```
+## Final Result in Graph (Update: 2025/2/8)
+![](/ioscamp-responses-graph.png)
 
 ## Algorithm
 See network as a directed graph, where people and their preferences are nodes and edges. To find teams in which people prefer each other is to find "communities" in the graph.
