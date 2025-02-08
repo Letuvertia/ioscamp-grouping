@@ -40,11 +40,46 @@ def read_from_google_sheet(sheet_id, path_to_credentials) -> pd.DataFrame:
 
     return records_df
 
+def anonymize_data(records_df):
+    # Extract unique names and numbers
+    names = records_df['請選擇您的名字與學員編號'].apply(lambda x: x.split('. ')[1]).unique()
+    numbers = records_df['請選擇您的名字與學員編號'].apply(lambda x: x.split('. ')[0]).unique()
+
+    # Generate random English names
+    english_names = [
+        "James", "Mary", "John", "Patricia", "Robert", "Jennifer", "Michael", "Linda",
+        "William", "Elizabeth", "David", "Barbara", "Richard", "Susan", "Joseph", "Jessica",
+        "Thomas", "Sarah", "Charles", "Karen", "Christopher", "Nancy", "Daniel", "Lisa",
+        "Matthew", "Betty", "Anthony", "Margaret", "Mark", "Sandra", "Donald", "Ashley",
+        "Steven", "Dorothy", "Paul", "Kimberly", "Andrew", "Emily"
+    ]
+    random.shuffle(english_names)
+
+    # Shuffle the numbers
+    shuffled_numbers = list(numbers)
+    random.shuffle(shuffled_numbers)
+
+    # Create mappings
+    name_mapping = dict(zip(names, english_names))
+    number_mapping = dict(zip(numbers, shuffled_numbers))
+
+    # Apply mappings to the DataFrame
+    records_df['請選擇您的名字與學員編號'] = records_df['請選擇您的名字與學員編號'].apply(
+        lambda x: f"{number_mapping[x.split('. ')[0]]}. {name_mapping[x.split('. ')[1]]}"
+    )
+    records_df['請勾選您希望與其同組的學員'] = records_df['請勾選您希望與其同組的學員'].apply(
+        lambda x: ', '.join([f"{number_mapping[id_and_name.split('. ')[0]]}. {name_mapping[id_and_name.split('. ')[1]]}" for id_and_name in x.split(', ')])
+    )
+
+    return records_df
+
 def generate_graph_google_sheet(sheet_id='1HC7UZAEg7BJ9sD29Ufvdzpa3FCp3Bw72ZMzI5C126XA',
                                 path_to_credentials='api-keys/ioscamp-grouping-df344bc23626.json') -> nx.DiGraph:
     records_df = read_from_google_sheet(sheet_id, path_to_credentials)
+    records_df = anonymize_data(records_df)
     print(f'{records_df.shape[0]} reponses in total')
     print(records_df)
+    records_df.to_csv('ioscamp-responses.csv', index=False, columns=['請選擇您的名字與學員編號', '請勾選您希望與其同組的學員'])
     
     def parse_id(id_and_name):
         id = id_and_name.split('. ')[0]
@@ -74,7 +109,7 @@ def draw_graph(graph, title, filename):
     pos = nx.spring_layout(graph, seed=LAYOUT_SEED, k=0.3, iterations=30)
     plt.figure()
     labels = {node: id_to_name[node] for node in graph.nodes()}
-    nx.draw(graph, pos, with_labels=True, labels=labels, node_color='lightblue', edge_color='gray', node_size=600, font_size=8)
+    nx.draw(graph, pos, with_labels=False, labels=labels, node_color='lightblue', edge_color='gray', node_size=600, font_size=8)
     plt.savefig(filename, dpi=600)
     plt.close()
 
@@ -86,7 +121,7 @@ def draw_communities_on_graph(graph, communities, n_communities, filename):
     pos = nx.spring_layout(graph, seed=LAYOUT_SEED, k=0.3, iterations=30)
     plt.figure()
     labels = {node: id_to_name[node] for node in graph.nodes()}
-    nx.draw(graph, pos, with_labels=True, labels=labels, node_color='lightblue', edge_color='gray', node_size=600, font_size=8)
+    nx.draw(graph, pos, with_labels=False, labels=labels, node_color='lightblue', edge_color='gray', node_size=600, font_size=8)
     for community, color in zip(communities, COLORS):
         nx.draw_networkx_nodes(graph, pos, nodelist=list(community), node_color=color)
     plt.savefig(filename, dpi=600)
